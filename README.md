@@ -76,6 +76,68 @@ Dodatkowo w projekcie wykorzystywano własne moduły pomocnicze do ładowania i 
 
 ---
 
+## Opis modułów pomocniczych
+
+### `news_loader.py`
+Moduł `news_loader` odpowiada za pobieranie, wczytywanie, czyszczenie i aktualizację danych newsowych dotyczących Bitcoina. Zawiera funkcje do pracy z plikiem CSV oraz do komunikacji z API Alpha Vantage. :contentReference[oaicite:0]{index=0}
+
+#### Najważniejsze funkcje:
+- `empty_news_df()`  
+  Tworzy pusty DataFrame z ustaloną strukturą kolumn dla newsów.
+
+- `load_existing_news(csv_path)`  
+  Wczytuje istniejący plik CSV z newsami. Jeśli plik nie istnieje albo jest pusty, zwraca pusty DataFrame o poprawnej strukturze.
+
+- `clean_news_df(df, min_date="2026-01-01")`  
+  Czyści dane newsowe poprzez:
+  - uzupełnienie brakujących kolumn,
+  - konwersję dat,
+  - usunięcie rekordów z brakującą datą publikacji, tytułem lub źródłem,
+  - odfiltrowanie rekordów starszych niż zadana data,
+  - pozostawienie newsów powiązanych z Bitcoinem,
+  - usunięcie duplikatów,
+  - posortowanie danych po czasie publikacji.  
+  Funkcja ta przygotowuje dane do dalszej analizy. 
+
+- `fetch_news_from_api(api_key, time_from, time_to=None, limit=1000)`  
+  Pobiera newsy z API Alpha Vantage dla wskazanego zakresu czasu. Funkcja obsługuje również sytuacje błędne, takie jak limit API, błędne parametry zapytania lub brak pola `feed` w odpowiedzi. 
+
+- `transform_feed_to_df(feed)`  
+  Zamienia surową odpowiedź API w uporządkowany DataFrame zawierający najważniejsze pola, takie jak data publikacji, tytuł, źródło, link oraz sentyment.
+
+- `fetch_news_for_window(api_key, start_dt, end_dt)`  
+  Pobiera dane newsowe dla konkretnego przedziału czasowego i zamienia je na DataFrame.
+
+- `build_initial_news_csv(api_key, csv_path="btc_news.csv", start_date="2026-01-01")`  
+  Buduje początkowy plik CSV z newsami, pobierając dane etapami miesiąc po miesiącu. Następnie łączy dane, czyści je i zapisuje do pliku. Funkcja została przygotowana tak, aby nie nadpisywać istniejącego poprawnego pliku pustymi danymi. 
+
+- `update_news_csv(api_key, csv_path="btc_news.csv", min_date="2026-01-01")`  
+  Aktualizuje istniejący plik CSV tylko o nowe rekordy od ostatniej zapisanej daty. Dzięki temu możliwe jest inkrementalne rozszerzanie zbioru danych bez ponownego pobierania całej historii. 
+
+---
+
+### `btc_loader.py`
+Moduł `btc_loader` odpowiada za pobieranie danych rynkowych BTC z biblioteki `yfinance` dla dokładnie tego samego okresu, który występuje w danych newsowych. Dzięki temu możliwe jest późniejsze poprawne połączenie obu źródeł danych w jednej analizie. :contentReference[oaicite:5]{index=5}
+
+#### Najważniejsza funkcja:
+- `load_btc_for_news_period(news_df, force_interval=None)`  
+  Funkcja:
+  - odczytuje minimalną i maksymalną datę z danych newsowych,
+  - na tej podstawie wyznacza zakres pobierania danych BTC,
+  - automatycznie dobiera interwał danych (`1h` lub `1d`) w zależności od długości analizowanego okresu,
+  - pobiera dane `BTC-USD` z `yfinance`,
+  - normalizuje strukturę kolumn,
+  - sprawdza obecność wymaganych pól (`Datetime`, `Close`, `High`, `Low`, `Open`, `Volume`),
+  - oblicza dodatkowe zmienne analityczne:
+    - `Return` — procentową stopę zwrotu,
+    - `Range` — zakres zmian ceny,
+    - `time_key` — klucz czasowy do późniejszego łączenia z newsami,
+    - `btc_interval` — użyty interwał danych. :contentReference[oaicite:6]{index=6}
+
+Moduł ten pełni więc rolę warstwy pobierającej i przygotowującej dane rynkowe do dalszej analizy EDA oraz do łączenia z agregatami newsowymi. :contentReference[oaicite:7]{index=7}
+
+---
+
 ## Struktura analizy
 Notebook obejmuje następujące etapy:
 
